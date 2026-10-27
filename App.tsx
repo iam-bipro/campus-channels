@@ -4,9 +4,10 @@ import LoginScreen from './src/screens/auth/LoginScreen';
 import SignUpScreen from './src/screens/auth/SignUpScreen';
 import NoChannelsScreen from './src/screens/home/NoChannelsScreen';
 import JoinCommunityScreen from './src/screens/home/JoinCommunityScreen';
+import HomeScreen from './src/screens/home/HomeScreen';
 
 export default function App() {
-  const [screen, setScreen] = useState<'login' | 'signup' | 'no-channels' | 'join-community'>('login');
+  const [screen, setScreen] = useState<'login' | 'signup' | 'home' | 'no-channels' | 'join-community'>('login');
 
   useEffect(() => {
     if (Platform.OS !== 'web' || document.getElementById('campus-channels-input-styles')) {
@@ -41,9 +42,11 @@ export default function App() {
   }, []);
 
   return screen === 'login' ? (
-    <LoginScreen onAuthenticated={() => setScreen('no-channels')} onJoinNow={() => setScreen('signup')} />
+    <LoginScreen onAuthenticated={(hasCommunity) => setScreen(hasCommunity ? 'home' : 'no-channels')} onJoinNow={() => setScreen('signup')} />
   ) : screen === 'signup' ? (
     <SignUpScreen onAuthenticated={() => setScreen('no-channels')} onLogin={() => setScreen('login')} />
+  ) : screen === 'home' ? (
+    <HomeScreen onLogout={() => setScreen('login')} />
   ) : screen === 'no-channels' ? (
     <NoChannelsScreen onJoinCommunity={() => setScreen('join-community')} />
   ) : (
