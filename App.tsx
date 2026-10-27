@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import SignUpScreen from './src/screens/auth/SignUpScreen';
+import NoChannelsScreen from './src/screens/home/NoChannelsScreen';
+import JoinCommunityScreen from './src/screens/home/JoinCommunityScreen';
 
 export default function App() {
-  const [screen, setScreen] = useState<'login' | 'signup'>('login');
+  const [screen, setScreen] = useState<'login' | 'signup' | 'no-channels' | 'join-community'>('login');
 
   useEffect(() => {
     if (Platform.OS !== 'web' || document.getElementById('campus-channels-input-styles')) {
@@ -39,8 +41,12 @@ export default function App() {
   }, []);
 
   return screen === 'login' ? (
-    <LoginScreen onJoinNow={() => setScreen('signup')} />
+    <LoginScreen onAuthenticated={() => setScreen('no-channels')} onJoinNow={() => setScreen('signup')} />
+  ) : screen === 'signup' ? (
+    <SignUpScreen onAuthenticated={() => setScreen('no-channels')} onLogin={() => setScreen('login')} />
+  ) : screen === 'no-channels' ? (
+    <NoChannelsScreen onJoinCommunity={() => setScreen('join-community')} />
   ) : (
-    <SignUpScreen onLogin={() => setScreen('login')} />
+    <JoinCommunityScreen onBack={() => setScreen('no-channels')} />
   );
 }

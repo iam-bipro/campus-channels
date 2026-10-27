@@ -12,16 +12,18 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { loginWithEmail } from '../../services/authService';
+import { hasApprovedCommunity, loginWithEmail, loginWithGoogle } from '../../services/authService';
+import { getFirebaseAuth } from '../../config/firebase';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
 type LoginScreenProps = {
+  onAuthenticated?: (hasCommunity: boolean) => void;
   onJoinNow?: () => void;
 };
 
-export default function LoginScreen({ onJoinNow }: LoginScreenProps) {
+export default function LoginScreen({ onAuthenticated, onJoinNow }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -36,6 +38,7 @@ export default function LoginScreen({ onJoinNow }: LoginScreenProps) {
     try {
       setIsSubmitting(true);
       await loginWithEmail(email, password);
+      onAuthenticated?.(await hasApprovedCommunity(getFirebaseUserId()));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to log in right now.';
       Alert.alert('Login failed', message);
@@ -150,7 +153,15 @@ export default function LoginScreen({ onJoinNow }: LoginScreenProps) {
 
             <Pressable
               accessibilityRole="button"
-              onPress={() => Alert.alert('Google sign-in', 'Google sign-in will be enabled after OAuth setup.')}
+              onPress={async () => {
+                try {
+                  await loginWithGoogle();
+                  onAuthenticated?.(await hasApprovedCommunity(getFirebaseUserId()));
+                } catch (error) {
+                  const message = error instanceof Error ? error.message : 'Unable to continue with Google.';
+                  Alert.alert('Google sign-in failed', message);
+                }
+              }}
               style={({ pressed }) => [styles.googleButton, pressed && styles.pressed]}
             >
               <Text style={styles.googleG}>G</Text>
@@ -186,6 +197,14 @@ export default function LoginScreen({ onJoinNow }: LoginScreenProps) {
       </KeyboardAvoidingView>
     </View>
   );
+}
+
+function getFirebaseUserId(): string {
+  const user = getFirebaseAuth().currentUser;
+  if (!user) {
+    throw new Error('Authentication completed without an active user session.');
+  }
+  return user.uid;
 }
 
 const styles = StyleSheet.create({

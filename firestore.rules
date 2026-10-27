@@ -21,6 +21,12 @@ service cloud.firestore {
       allow create, update: if signedIn() && request.auth.uid == uid;
     }
 
+    match /communities/{communityId} {
+      allow read: if approvedMember(communityId);
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if canModerate(communityId);
+    }
+
     match /communities/{communityId}/invites/{code} {
       allow read: if canModerate(communityId);
       allow create, update, delete: if signedIn() &&
@@ -30,8 +36,14 @@ service cloud.firestore {
     match /communities/{communityId}/members/{uid} {
       allow read: if approvedMember(communityId);
       allow create: if signedIn() && request.auth.uid == uid &&
+        request.resource.data.uid == request.auth.uid &&
         request.resource.data.status == 'pending';
       allow update: if canModerate(communityId);
+    }
+
+    match /communities/{communityId}/channels/{channelId} {
+      allow read: if approvedMember(communityId);
+      allow create, update, delete: if canModerate(communityId);
     }
 
     match /communities/{communityId}/channels/{channelId}/papers/{paperId} {

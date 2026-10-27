@@ -12,16 +12,19 @@ import {
   View,
 } from 'react-native';
 import { colors } from '../../theme/colors';
+import { loginWithGoogle } from '../../services/authService';
+import { registerWithEmail } from '../../services/authService';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
 type SignUpScreenProps = {
+  onAuthenticated?: () => void;
   onLogin?: () => void;
 };
 
 const steps = ['Basic Info', 'College Details', 'Profile', 'Done'];
 
-export default function SignUpScreen({ onLogin }: SignUpScreenProps) {
+export default function SignUpScreen({ onAuthenticated, onLogin }: SignUpScreenProps) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,6 +35,7 @@ export default function SignUpScreen({ onLogin }: SignUpScreenProps) {
   const [bio, setBio] = useState('');
   const [step, setStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleContinue = () => {
     if (step === steps.length - 1) {
@@ -42,6 +46,19 @@ export default function SignUpScreen({ onLogin }: SignUpScreenProps) {
   };
 
   const handleBack = () => setStep((current) => Math.max(current - 1, 0));
+
+  const handleCreateAccount = async () => {
+    try {
+      setIsSubmitting(true);
+      await registerWithEmail({ name: fullName, email, password, rollNo, department, year, phone, bio });
+      onAuthenticated?.();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to create your account.';
+      Alert.alert('Sign-up failed', message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <View style={styles.screen}>
@@ -160,7 +177,7 @@ export default function SignUpScreen({ onLogin }: SignUpScreenProps) {
                   <Text style={styles.backButtonText}>Back</Text>
                 </Pressable>
               ) : <View />}
-              <Pressable accessibilityRole="button" onPress={handleContinue} style={({ pressed }) => [styles.primaryButton, styles.continueButton, pressed && styles.pressed]}>
+              <Pressable accessibilityRole="button" disabled={isSubmitting} onPress={step === steps.length - 1 ? handleCreateAccount : handleContinue} style={({ pressed }) => [styles.primaryButton, styles.continueButton, pressed && styles.pressed]}>
                 <Text style={styles.primaryButtonText}>{step === steps.length - 1 ? 'Create Account' : 'Continue'}</Text>
                 <Ionicons color={colors.white} name={step === steps.length - 1 ? 'checkmark' : 'arrow-forward'} size={25} />
               </Pressable>
@@ -173,7 +190,15 @@ export default function SignUpScreen({ onLogin }: SignUpScreenProps) {
                   <Text style={styles.or}>OR</Text>
                   <View style={styles.divider} />
                 </View>
-                <Pressable accessibilityRole="button" onPress={() => Alert.alert('Google sign-up', 'Google sign-up will be enabled after OAuth setup.')} style={({ pressed }) => [styles.googleButton, pressed && styles.pressed]}>
+                <Pressable accessibilityRole="button" onPress={async () => {
+                  try {
+                    await loginWithGoogle();
+                    onAuthenticated?.();
+                  } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Unable to continue with Google.';
+                    Alert.alert('Google sign-up failed', message);
+                  }
+                }} style={({ pressed }) => [styles.googleButton, pressed && styles.pressed]}>
                   <Text style={styles.googleG}>G</Text>
                   <Text style={styles.googleText}>Sign up with Google</Text>
                 </Pressable>

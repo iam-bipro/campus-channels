@@ -3,6 +3,7 @@ import { getAuth, type Auth } from 'firebase/auth';
 import { getDatabase, type Database } from 'firebase/database';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getFunctions, type Functions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -25,6 +26,7 @@ export function getFirebaseAuth(): Auth {
 
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const functions: Functions = getFunctions(app);
 
 export function getRealtimeDatabase(): Database {
   if (!firebaseConfig.databaseURL && !firebaseConfig.projectId) {
