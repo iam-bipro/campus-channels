@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "Campus Channels",
+    "slug": "campus-channels",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": ["**/*"],
+    "plugins": ["expo-notifications"]
+  }
+}

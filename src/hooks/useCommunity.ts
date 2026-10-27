@@ -1,0 +1,1 @@
+// Community state hook.

@@ -1,0 +1,1 @@
+// Paper detail screen.

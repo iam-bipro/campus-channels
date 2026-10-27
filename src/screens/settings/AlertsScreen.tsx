@@ -1,0 +1,1 @@
+// Alerts history screen.

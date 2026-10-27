@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Files are scoped under communities/{communityId}/... and must be owned by an approved member.
+    match /communities/{communityId}/{allPaths=**} {
+      allow read: if signedIn() &&
+        firestore.get(/databases/(default)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.status == 'approved';
+      allow write: if signedIn() &&
+        firestore.get(/databases/(default)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.role in ['owner', 'admin', 'moderator'] &&
+        request.resource.size < 20 * 1024 * 1024;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

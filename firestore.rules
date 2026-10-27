@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function approvedMember(communityId) {
+      return signedIn() &&
+        get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.status == 'approved';
+    }
+
+    function canModerate(communityId) {
+      return approvedMember(communityId) &&
+        get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.role in ['owner', 'admin', 'moderator'];
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /communities/{communityId}/invites/{code} {
+      allow read: if canModerate(communityId);
+      allow create, update, delete: if signedIn() &&
+        get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.role in ['owner', 'admin'];
+    }
+
+    match /communities/{communityId}/members/{uid} {
+      allow read: if approvedMember(communityId);
+      allow create: if signedIn() && request.auth.uid == uid &&
+        request.resource.data.status == 'pending';
+      allow update: if canModerate(communityId);
+    }
+
+    match /communities/{communityId}/channels/{channelId}/papers/{paperId} {
+      allow read: if approvedMember(communityId);
+      allow create: if canModerate(communityId);
+      allow update: if approvedMember(communityId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seenBy', 'seenCount', 'reactions', 'updatedAt']);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
