@@ -225,17 +225,26 @@ export default function SignUpScreen({ onAuthenticated, onLogin }: SignUpScreenP
                   <Text style={styles.or}>OR</Text>
                   <View style={styles.divider} />
                 </View>
-                <Pressable accessibilityRole="button" onPress={async () => {
+                <Pressable accessibilityRole="button" disabled={isSubmitting} onPress={async () => {
                   try {
+                    setIsSubmitting(true);
                     await loginWithGoogle();
                     onAuthenticated?.();
                   } catch (error) {
                     const message = error instanceof Error ? error.message : 'Unable to continue with Google.';
                     Alert.alert('Google sign-up failed', message);
+                  } finally {
+                    setIsSubmitting(false);
                   }
                 }} style={({ pressed }) => [styles.googleButton, pressed && styles.pressed]}>
-                  <Text style={styles.googleG}>G</Text>
-                  <Text style={styles.googleText}>Sign up with Google</Text>
+                  {isSubmitting ? (
+                    <ActivityIndicator color={colors.primary} />
+                  ) : (
+                    <>
+                      <Text style={styles.googleG}>G</Text>
+                      <Text style={styles.googleText}>Continue with Google</Text>
+                    </>
+                  )}
                 </Pressable>
               </>
             )}

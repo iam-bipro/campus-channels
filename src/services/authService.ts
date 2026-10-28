@@ -2,7 +2,9 @@ import {
   createUserWithEmailAndPassword,
   deleteUser,
   GoogleAuthProvider,
+  browserLocalPersistence,
   sendEmailVerification,
+  setPersistence,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -51,7 +53,9 @@ export async function loginWithGoogle(): Promise<void> {
     throw new Error('Google sign-in is currently configured for the web app. Add native OAuth configuration before using it on mobile.');
   }
 
-  const credential = await signInWithPopup(getFirebaseAuth(), new GoogleAuthProvider());
+  const auth = getFirebaseAuth();
+  await setPersistence(auth, browserLocalPersistence);
+  const credential = await signInWithPopup(auth, new GoogleAuthProvider());
   await syncUserProfile({
     name: credential.user.displayName || 'Campus Channels member',
     email: credential.user.email || '',

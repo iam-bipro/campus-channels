@@ -155,19 +155,29 @@ export default function LoginScreen({ onAuthenticated, onJoinNow }: LoginScreenP
 
             <Pressable
               accessibilityRole="button"
+              disabled={isSubmitting}
               onPress={async () => {
                 try {
+                  setIsSubmitting(true);
                   await loginWithGoogle();
                   onAuthenticated?.(await hasApprovedCommunity());
                 } catch (error) {
                   const message = error instanceof Error ? error.message : 'Unable to continue with Google.';
                   Alert.alert('Google sign-in failed', message);
+                } finally {
+                  setIsSubmitting(false);
                 }
               }}
               style={({ pressed }) => [styles.googleButton, pressed && styles.pressed]}
             >
-              <Text style={styles.googleG}>G</Text>
-              <Text style={styles.googleText}>Continue with Google</Text>
+              {isSubmitting ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <>
+                  <Text style={styles.googleG}>G</Text>
+                  <Text style={styles.googleText}>Continue with Google</Text>
+                </>
+              )}
             </Pressable>
 
             <View style={styles.joinRow}>
