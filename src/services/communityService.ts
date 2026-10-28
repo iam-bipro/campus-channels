@@ -17,3 +17,12 @@ export async function processJoinApproval(
   const processApproval = httpsCallable(functions, 'processJoinApproval');
   await processApproval({ communityId, targetUid, action });
 }
+
+export async function notifyCommunityOwnerOfJoinRequest(input: {
+  communityName: string;
+  ownerEmail: string;
+  requesterName?: string;
+}): Promise<void> {
+  const notifyOwner = httpsCallable(functions, 'notifyCommunityOwnerOfJoinRequest');
+  await notifyOwner(input);
+}

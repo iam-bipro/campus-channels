@@ -21,11 +21,12 @@ type NoChannelsScreenProps = {
   onLogout?: () => void;
   onAccount?: () => void;
   onCreateCommunity?: () => void;
+  onOpenCommunity?: (community: CommunitySummary) => void;
 };
 
 const filters = ['All', 'Departments', 'Subjects', 'Bookmarks'];
 
-export default function NoChannelsScreen({ onJoinCommunity, onLogout, onAccount, onCreateCommunity }: NoChannelsScreenProps) {
+export default function NoChannelsScreen({ onJoinCommunity, onLogout, onAccount, onCreateCommunity, onOpenCommunity }: NoChannelsScreenProps) {
   const [drawerVisible, setDrawerVisible] = React.useState(false);
   const [profileName, setProfileName] = React.useState('Your account');
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -86,9 +87,14 @@ export default function NoChannelsScreen({ onJoinCommunity, onLogout, onAccount,
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={styles.filterContent} horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.filterContent}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterScroll}
+        >
           {filters.map((filter, index) => (
-            <Pressable key={filter} accessibilityRole="button" accessibilityState={{ selected: activeFilter === filter }} onPress={() => setActiveFilter(filter)} style={[styles.filterChip, activeFilter === filter && styles.filterChipActive]}>
+            <Pressable key={filter} accessibilityRole="button" accessibilityState={{ selected: activeFilter === filter }} onPress={() => setActiveFilter(filter)} style={[styles.filterChip, activeFilter === filter && styles.filterChipActive, index > 0 && styles.filterChipSpacing]}>
               <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>{filter}</Text>
             </Pressable>
           ))}
@@ -101,7 +107,7 @@ export default function NoChannelsScreen({ onJoinCommunity, onLogout, onAccount,
             {!!searchQuery && <Text style={styles.searchStatus}>Showing results for “{searchQuery}”.</Text>}
             <Text style={styles.sectionTitle}>Your communities</Text>
             {visibleCommunities.map((community) => (
-              <Pressable key={community.id} accessibilityRole="button" style={({ pressed }) => [styles.communityCard, pressed && styles.pressed]}>
+              <Pressable key={community.id} accessibilityRole="button" onPress={() => onOpenCommunity?.(community)} style={({ pressed }) => [styles.communityCard, pressed && styles.pressed]}>
                 <View style={styles.communityIcon}><Ionicons color={colors.primary} name="people-outline" size={24} /></View>
                 <View style={styles.communityDetails}>
                   <Text style={styles.communityName}>{community.name}</Text>
@@ -159,8 +165,10 @@ const styles = StyleSheet.create({
   brandAccent: { color: '#4172EA' },
   searchInput: { color: colors.ink, flex: 1, fontSize: 16, fontWeight: '600', marginLeft: spacing.sm, minHeight: 44 },
   headerActions: { alignItems: 'center', flexDirection: 'row', gap: 7 },
-  filterContent: { gap: 10, paddingHorizontal: spacing.md, paddingVertical: spacing.md },
-  filterChip: { backgroundColor: '#F0F3F9', borderRadius: 24, paddingHorizontal: 19, paddingVertical: 11 },
+  filterScroll: { flexGrow: 0, height: 64 },
+  filterContent: { alignItems: 'center', flexDirection: 'row', paddingHorizontal: spacing.md },
+  filterChip: { alignItems: 'center', backgroundColor: '#F0F3F9', borderRadius: 24, height: 40, justifyContent: 'center', paddingHorizontal: 19 },
+  filterChipSpacing: { marginLeft: 10 },
   filterChipActive: { backgroundColor: '#DDE8FF' },
   filterText: { color: '#6E7890', fontSize: 15, fontWeight: '600' },
   filterTextActive: { color: '#3159B8' },

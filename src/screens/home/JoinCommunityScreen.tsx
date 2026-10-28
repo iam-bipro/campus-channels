@@ -1,16 +1,44 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Alert, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { getFirebaseAuth } from '../../config/firebase';
+import { notifyCommunityOwnerOfJoinRequest } from '../../services/communityService';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
-type JoinCommunityScreenProps = {
+type Props = {
   onBack?: () => void;
+  initialCommunityName?: string;
+  initialOwnerEmail?: string;
 };
 
-export default function JoinCommunityScreen({ onBack }: JoinCommunityScreenProps) {
-  const [inviteCode, setInviteCode] = useState('');
+export default function JoinCommunityScreen({ onBack, initialCommunityName, initialOwnerEmail }: Props) {
+  const [communityName, setCommunityName] = useState(initialCommunityName || '');
+  const [ownerEmail, setOwnerEmail] = useState(initialOwnerEmail || '');
+  const [loading, setLoading] = useState(false);
+
+  const submitRequest = async () => {
+    if (!communityName.trim() || !ownerEmail.trim()) {
+      Alert.alert('Invite link is incomplete', 'Ask the community admin to share a new invite link.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const user = getFirebaseAuth().currentUser;
+      await notifyCommunityOwnerOfJoinRequest({
+        communityName,
+        ownerEmail,
+        requesterName: user?.displayName || undefined,
+      });
+      Alert.alert('Request sent', 'The community admin has been notified by email. You can join after they approve your request.');
+    } catch (error) {
+      Alert.alert('Could not send request', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -22,28 +50,31 @@ export default function JoinCommunityScreen({ onBack }: JoinCommunityScreenProps
       </View>
       <View style={styles.content}>
         <View style={styles.iconCircle}><Ionicons color={colors.primary} name="people-outline" size={38} /></View>
-        <Text style={styles.title}>Enter your invite code</Text>
-        <Text style={styles.description}>Ask your department, seniors, or community admin for an invite code.</Text>
-        <TextInput
-          autoCapitalize="characters"
-          onChangeText={setInviteCode}
-          placeholder="e.g. CAMPUS2026"
-          placeholderTextColor="#A1B2CB"
-          style={styles.input}
-          value={inviteCode}
-        />
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => {
-            if (!inviteCode.trim()) {
-              Alert.alert('Enter an invite code', 'Add the code shared by your community admin.');
-              return;
-            }
-            Alert.alert('Invite submitted', 'Your community join request is ready to be submitted.');
-          }}
-          style={({ pressed }) => [styles.button, pressed && styles.pressed]}
-        >
-          <Text style={styles.buttonText}>Continue</Text>
+        <Text style={styles.title}>{communityName ? `Join ${communityName}` : 'Join a community'}</Text>
+        <Text style={styles.description}>Send a join request to the community admin. They will receive an email and approve your access.</Text>
+        {!initialCommunityName && (
+          <TextInput
+            autoCapitalize="words"
+            onChangeText={setCommunityName}
+            placeholder="Community name"
+            placeholderTextColor="#A1B2CB"
+            style={styles.input}
+            value={communityName}
+          />
+        )}
+        {!initialOwnerEmail && (
+          <TextInput
+            autoCapitalize="none"
+            keyboardType="email-address"
+            onChangeText={setOwnerEmail}
+            placeholder="Admin email"
+            placeholderTextColor="#A1B2CB"
+            style={[styles.input, !initialCommunityName && styles.secondaryInput]}
+            value={ownerEmail}
+          />
+        )}
+        <Pressable accessibilityRole="button" disabled={loading} onPress={submitRequest} style={({ pressed }) => [styles.button, pressed && styles.pressed, loading && styles.disabled]}>
+          <Text style={styles.buttonText}>{loading ? 'Sending...' : 'Request to join'}</Text>
           <Ionicons color={colors.white} name="arrow-forward" size={22} />
         </Pressable>
       </View>
@@ -61,7 +92,9 @@ const styles = StyleSheet.create({
   title: { ...typography.title, color: colors.ink, fontSize: 27, marginTop: spacing.lg, textAlign: 'center' },
   description: { ...typography.body, color: colors.body, lineHeight: 24, marginTop: spacing.sm, maxWidth: 420, textAlign: 'center' },
   input: { backgroundColor: colors.white, borderColor: colors.border, borderRadius: 16, borderWidth: 1.5, color: colors.ink, fontSize: 17, marginTop: spacing.xl, minHeight: 60, paddingHorizontal: spacing.md, width: '100%' },
+  secondaryInput: { marginTop: spacing.sm },
   button: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 17, flexDirection: 'row', justifyContent: 'center', marginTop: spacing.md, minHeight: 60, width: '100%' },
   buttonText: { color: colors.white, fontSize: 17, fontWeight: '800', marginRight: spacing.sm },
   pressed: { opacity: 0.82 },
+  disabled: { opacity: 0.6 },
 });

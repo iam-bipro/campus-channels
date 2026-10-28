@@ -8,10 +8,22 @@ import HomeScreen from './src/screens/home/HomeScreen';
 import AccountScreen from './src/screens/home/AccountScreen';
 import CreateCommunityScreen from './src/screens/home/CreateCommunityScreen';
 import CommunityAdminScreen from './src/screens/home/CommunityAdminScreen';
+import CommunityScreen from './src/screens/community/CommunityScreen';
+import type { CommunitySummary } from './src/services/dataConnectService';
 
 export default function App() {
-  const [screen, setScreen] = useState<'login' | 'signup' | 'home' | 'no-channels' | 'join-community' | 'account' | 'create-community' | 'community-admin'>('login');
+  const [screen, setScreen] = useState<'login' | 'signup' | 'home' | 'no-channels' | 'join-community' | 'account' | 'create-community' | 'community-admin' | 'community'>('login');
   const [adminCommunity, setAdminCommunity] = useState({ id: '', name: '' });
+  const [selectedCommunity, setSelectedCommunity] = useState<CommunitySummary | null>(null);
+  const [pendingInvite, setPendingInvite] = useState<{ communityName: string; ownerEmail: string } | null>(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    const communityName = params.get('joinCommunity');
+    const ownerEmail = params.get('ownerEmail');
+    return communityName && ownerEmail ? { communityName, ownerEmail } : null;
+  });
+
+  const completeAuth = () => setScreen(pendingInvite ? 'join-community' : 'no-channels');
 
   useEffect(() => {
     if (Platform.OS !== 'web' || document.getElementById('campus-channels-input-styles')) {
@@ -46,20 +58,22 @@ export default function App() {
   }, []);
 
   return screen === 'login' ? (
-    <LoginScreen onAuthenticated={() => setScreen('no-channels')} onJoinNow={() => setScreen('signup')} />
+    <LoginScreen onAuthenticated={completeAuth} onJoinNow={() => setScreen('signup')} />
   ) : screen === 'signup' ? (
-    <SignUpScreen onAuthenticated={() => setScreen('no-channels')} onLogin={() => setScreen('login')} />
+    <SignUpScreen onAuthenticated={completeAuth} onLogin={() => setScreen('login')} />
   ) : screen === 'home' ? (
     <HomeScreen onAccount={() => setScreen('account')} onCreateCommunity={() => setScreen('create-community')} onJoinCommunity={() => setScreen('join-community')} onLogout={() => setScreen('login')} />
   ) : screen === 'no-channels' ? (
-    <NoChannelsScreen onAccount={() => setScreen('account')} onCreateCommunity={() => setScreen('create-community')} onJoinCommunity={() => setScreen('join-community')} onLogout={() => setScreen('login')} />
+    <NoChannelsScreen onAccount={() => setScreen('account')} onCreateCommunity={() => setScreen('create-community')} onJoinCommunity={() => setScreen('join-community')} onLogout={() => setScreen('login')} onOpenCommunity={(community) => { setSelectedCommunity(community); setScreen('community'); }} />
   ) : screen === 'account' ? (
     <AccountScreen onBack={() => setScreen('no-channels')} />
   ) : screen === 'create-community' ? (
     <CreateCommunityScreen onBack={() => setScreen('no-channels')} onCreated={(id, name) => { setAdminCommunity({ id, name }); setScreen('community-admin'); }} />
   ) : screen === 'community-admin' ? (
     <CommunityAdminScreen communityId={adminCommunity.id} communityName={adminCommunity.name} onBack={() => setScreen('no-channels')} />
+  ) : screen === 'community' && selectedCommunity ? (
+    <CommunityScreen communityId={selectedCommunity.id} communityName={selectedCommunity.name} description={selectedCommunity.description} onBack={() => setScreen('no-channels')} />
   ) : (
-    <JoinCommunityScreen onBack={() => setScreen('no-channels')} />
+    <JoinCommunityScreen initialCommunityName={pendingInvite?.communityName} initialOwnerEmail={pendingInvite?.ownerEmail} onBack={() => { setPendingInvite(null); setScreen('no-channels'); }} />
   );
 }

@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, SafeAreaView, Share, StyleSheet, Text, View } from 'react-native';
+import { Platform } from 'react-native';
+import { getFirebaseAuth } from '../../config/firebase';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 
@@ -11,6 +13,17 @@ type Props = {
 };
 
 export default function CommunityAdminScreen({ communityId, communityName, onBack }: Props) {
+  const shareInvite = async () => {
+    const ownerEmail = getFirebaseAuth().currentUser?.email;
+    if (!ownerEmail) {
+      Alert.alert('Sign in required', 'Sign in again before sharing a community invite.');
+      return;
+    }
+    const baseUrl = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : 'https://campus-channels.web.app';
+    const inviteUrl = `${baseUrl}/?joinCommunity=${encodeURIComponent(communityName)}&ownerEmail=${encodeURIComponent(ownerEmail)}`;
+    await Share.share({ message: `Join ${communityName} on Campus Channels: ${inviteUrl}`, url: inviteUrl, title: `Join ${communityName}` });
+  };
+
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
@@ -26,7 +39,7 @@ export default function CommunityAdminScreen({ communityId, communityName, onBac
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Admin controls</Text>
           <AdminAction icon="person-add-outline" label="Manage members" />
-          <AdminAction icon="link-outline" label="Share invite code" />
+          <AdminAction icon="link-outline" label="Share invite link" onPress={shareInvite} />
           <AdminAction icon="chatbubbles-outline" label="Manage channels" />
           <AdminAction icon="settings-outline" label="Community settings" />
         </View>
@@ -37,9 +50,9 @@ export default function CommunityAdminScreen({ communityId, communityName, onBac
   );
 }
 
-function AdminAction({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: string }) {
+function AdminAction({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress?: () => void }) {
   return (
-    <Pressable accessibilityRole="button" style={({ pressed }) => [styles.action, pressed && styles.pressed]}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.action, pressed && styles.pressed]}>
       <Ionicons color={colors.primary} name={icon} size={22} />
       <Text style={styles.actionText}>{label}</Text>
       <Ionicons color="#8C9AB4" name="chevron-forward" size={18} />

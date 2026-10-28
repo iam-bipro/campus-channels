@@ -1,4 +1,5 @@
 import { getApps, initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
@@ -9,6 +10,38 @@ if (getApps().length === 0) {
 }
 
 const storage = getStorage();
+const firestore = getFirestore();
+
+export const notifyCommunityOwnerOfJoinRequest = onCall(async (request) => {
+  const requesterUid = requireAuth(request.auth?.uid);
+  const requesterEmail = request.auth?.token.email;
+  const { communityName, ownerEmail, requesterName } = request.data as {
+    communityName?: string;
+    ownerEmail?: string;
+    requesterName?: string;
+  };
+
+  if (!requesterEmail || !communityName?.trim() || !ownerEmail?.trim()) {
+    throw new HttpsError('invalid-argument', 'communityName and ownerEmail are required.');
+  }
+
+  await firestore.collection('mail').add({
+    to: ownerEmail.trim().toLowerCase(),
+    message: {
+      subject: `New join request for ${communityName.trim()}`,
+      text: `${requesterName?.trim() || requesterEmail} (${requesterEmail}) requested to join ${communityName.trim()}. Open Campus Channels to review the request.`,
+      html: `<p><strong>${requesterName?.trim() || requesterEmail}</strong> (${requesterEmail}) requested to join <strong>${communityName.trim()}</strong>.</p><p>Open Campus Channels to review the request.</p>`,
+    },
+    metadata: {
+      type: 'community-join-request',
+      requesterUid,
+      communityName: communityName.trim(),
+    },
+    createdAt: new Date(),
+  });
+
+  return { status: 'queued' };
+});
 
 export const syncUserProfile = onCall(async (request) => {
   const uid = requireAuth(request.auth?.uid);

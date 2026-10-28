@@ -40,3 +40,7 @@ firebase deploy --only functions
 ```
 
 The application still needs Firebase Authentication enabled for Email/Password and Google. Cloud SQL stores application data; Firebase Authentication stores credentials and issues the ID tokens used by the backend.
+
+## 4. Deliver join-request emails
+
+The `notifyCommunityOwnerOfJoinRequest` function queues an email in the Firestore `mail` collection. Install and configure Firebase's Trigger Email extension for this project, pointing it at the `mail` collection, and provide the SMTP credentials requested by the extension. Firestore rules deny client access to this collection; only the trusted function writes notification documents.
