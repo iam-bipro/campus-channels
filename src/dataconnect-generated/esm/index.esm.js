@@ -55,3 +55,28 @@ export function updateUserByEmail(dcOrVars, vars) {
   return executeMutation(updateUserByEmailRef(dcInstance, inputVars));
 }
 
+export const getMyCommunitiesRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetMyCommunities', inputVars);
+}
+getMyCommunitiesRef.operationName = 'GetMyCommunities';
+
+export function getMyCommunities(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getMyCommunitiesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const createCommunityRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateCommunity', inputVars);
+}
+createCommunityRef.operationName = 'CreateCommunity';
+
+export function createCommunity(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(createCommunityRef(dcInstance, inputVars));
+}
+

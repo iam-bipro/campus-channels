@@ -10,9 +10,11 @@ This README will guide you through the process of using the generated JavaScript
 - [**Queries**](#queries)
   - [*GetUserByEmail*](#getuserbyemail)
   - [*HasApprovedCommunityByEmail*](#hasapprovedcommunitybyemail)
+  - [*GetMyCommunities*](#getmycommunities)
 - [**Mutations**](#mutations)
   - [*CreateUser*](#createuser)
   - [*UpdateUserByEmail*](#updateuserbyemail)
+  - [*CreateCommunity*](#createcommunity)
 
 # Accessing the connector
 A connector is a collection of Queries and Mutations. One SDK is generated for each connector - this SDK is generated for the connector `campus-channels`. You can find more information about connectors in the [Data Connect documentation](https://firebase.google.com/docs/data-connect#how-does).
@@ -287,6 +289,122 @@ console.log(data.memberships);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.memberships);
+});
+```
+
+## GetMyCommunities
+You can execute the `GetMyCommunities` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getMyCommunities(vars: GetMyCommunitiesVariables, options?: ExecuteQueryOptions): QueryPromise<GetMyCommunitiesData, GetMyCommunitiesVariables>;
+
+interface GetMyCommunitiesRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetMyCommunitiesVariables): QueryRef<GetMyCommunitiesData, GetMyCommunitiesVariables>;
+}
+export const getMyCommunitiesRef: GetMyCommunitiesRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getMyCommunities(dc: DataConnect, vars: GetMyCommunitiesVariables, options?: ExecuteQueryOptions): QueryPromise<GetMyCommunitiesData, GetMyCommunitiesVariables>;
+
+interface GetMyCommunitiesRef {
+  ...
+  (dc: DataConnect, vars: GetMyCommunitiesVariables): QueryRef<GetMyCommunitiesData, GetMyCommunitiesVariables>;
+}
+export const getMyCommunitiesRef: GetMyCommunitiesRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getMyCommunitiesRef:
+```typescript
+const name = getMyCommunitiesRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetMyCommunities` query requires an argument of type `GetMyCommunitiesVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetMyCommunitiesVariables {
+  email: string;
+}
+```
+### Return Type
+Recall that executing the `GetMyCommunities` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetMyCommunitiesData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetMyCommunitiesData {
+  communities: ({
+    id: UUIDString;
+    name: string;
+    description?: string | null;
+    postingPolicy: string;
+    memberCount?: number | null;
+    createdAt: TimestampString;
+  } & Community_Key)[];
+}
+```
+### Using `GetMyCommunities`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getMyCommunities, GetMyCommunitiesVariables } from '@firebasegen/campus-channels-connector';
+
+// The `GetMyCommunities` query requires an argument of type `GetMyCommunitiesVariables`:
+const getMyCommunitiesVars: GetMyCommunitiesVariables = {
+  email: ..., 
+};
+
+// Call the `getMyCommunities()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getMyCommunities(getMyCommunitiesVars);
+// Variables can be defined inline as well.
+const { data } = await getMyCommunities({ email: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getMyCommunities(dataConnect, getMyCommunitiesVars);
+
+console.log(data.communities);
+
+// Or, you can use the `Promise` API.
+getMyCommunities(getMyCommunitiesVars).then((response) => {
+  const data = response.data;
+  console.log(data.communities);
+});
+```
+
+### Using `GetMyCommunities`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getMyCommunitiesRef, GetMyCommunitiesVariables } from '@firebasegen/campus-channels-connector';
+
+// The `GetMyCommunities` query requires an argument of type `GetMyCommunitiesVariables`:
+const getMyCommunitiesVars: GetMyCommunitiesVariables = {
+  email: ..., 
+};
+
+// Call the `getMyCommunitiesRef()` function to get a reference to the query.
+const ref = getMyCommunitiesRef(getMyCommunitiesVars);
+// Variables can be defined inline as well.
+const ref = getMyCommunitiesRef({ email: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getMyCommunitiesRef(dataConnect, getMyCommunitiesVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.communities);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.communities);
 });
 ```
 
@@ -565,6 +683,124 @@ console.log(data.user_update);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.user_update);
+});
+```
+
+## CreateCommunity
+You can execute the `CreateCommunity` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+createCommunity(vars: CreateCommunityVariables): MutationPromise<CreateCommunityData, CreateCommunityVariables>;
+
+interface CreateCommunityRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateCommunityVariables): MutationRef<CreateCommunityData, CreateCommunityVariables>;
+}
+export const createCommunityRef: CreateCommunityRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+createCommunity(dc: DataConnect, vars: CreateCommunityVariables): MutationPromise<CreateCommunityData, CreateCommunityVariables>;
+
+interface CreateCommunityRef {
+  ...
+  (dc: DataConnect, vars: CreateCommunityVariables): MutationRef<CreateCommunityData, CreateCommunityVariables>;
+}
+export const createCommunityRef: CreateCommunityRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createCommunityRef:
+```typescript
+const name = createCommunityRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CreateCommunity` mutation requires an argument of type `CreateCommunityVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface CreateCommunityVariables {
+  ownerId: UUIDString;
+  email: string;
+  name: string;
+  description?: string | null;
+}
+```
+### Return Type
+Recall that executing the `CreateCommunity` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CreateCommunityData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CreateCommunityData {
+  community_insert: Community_Key;
+}
+```
+### Using `CreateCommunity`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, createCommunity, CreateCommunityVariables } from '@firebasegen/campus-channels-connector';
+
+// The `CreateCommunity` mutation requires an argument of type `CreateCommunityVariables`:
+const createCommunityVars: CreateCommunityVariables = {
+  ownerId: ..., 
+  email: ..., 
+  name: ..., 
+  description: ..., // optional
+};
+
+// Call the `createCommunity()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await createCommunity(createCommunityVars);
+// Variables can be defined inline as well.
+const { data } = await createCommunity({ ownerId: ..., email: ..., name: ..., description: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await createCommunity(dataConnect, createCommunityVars);
+
+console.log(data.community_insert);
+
+// Or, you can use the `Promise` API.
+createCommunity(createCommunityVars).then((response) => {
+  const data = response.data;
+  console.log(data.community_insert);
+});
+```
+
+### Using `CreateCommunity`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, createCommunityRef, CreateCommunityVariables } from '@firebasegen/campus-channels-connector';
+
+// The `CreateCommunity` mutation requires an argument of type `CreateCommunityVariables`:
+const createCommunityVars: CreateCommunityVariables = {
+  ownerId: ..., 
+  email: ..., 
+  name: ..., 
+  description: ..., // optional
+};
+
+// Call the `createCommunityRef()` function to get a reference to the mutation.
+const ref = createCommunityRef(createCommunityVars);
+// Variables can be defined inline as well.
+const ref = createCommunityRef({ ownerId: ..., email: ..., name: ..., description: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = createCommunityRef(dataConnect, createCommunityVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.community_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.community_insert);
 });
 ```
 

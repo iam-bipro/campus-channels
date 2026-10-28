@@ -20,6 +20,17 @@ export interface Community_Key {
   __typename?: 'Community_Key';
 }
 
+export interface CreateCommunityData {
+  community_insert: Community_Key;
+}
+
+export interface CreateCommunityVariables {
+  ownerId: UUIDString;
+  email: string;
+  name: string;
+  description?: string | null;
+}
+
 export interface CreateUserData {
   user_insert: User_Key;
 }
@@ -33,6 +44,21 @@ export interface CreateUserVariables {
   phone?: string | null;
   bio?: string | null;
   photoUrl?: string | null;
+}
+
+export interface GetMyCommunitiesData {
+  communities: ({
+    id: UUIDString;
+    name: string;
+    description?: string | null;
+    postingPolicy: string;
+    memberCount?: number | null;
+    createdAt: TimestampString;
+  } & Community_Key)[];
+}
+
+export interface GetMyCommunitiesVariables {
+  email: string;
 }
 
 export interface GetUserByEmailData {
@@ -147,4 +173,28 @@ export const updateUserByEmailRef: UpdateUserByEmailRef;
 
 export function updateUserByEmail(vars: UpdateUserByEmailVariables): MutationPromise<UpdateUserByEmailData, UpdateUserByEmailVariables>;
 export function updateUserByEmail(dc: DataConnect, vars: UpdateUserByEmailVariables): MutationPromise<UpdateUserByEmailData, UpdateUserByEmailVariables>;
+
+interface GetMyCommunitiesRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetMyCommunitiesVariables): QueryRef<GetMyCommunitiesData, GetMyCommunitiesVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetMyCommunitiesVariables): QueryRef<GetMyCommunitiesData, GetMyCommunitiesVariables>;
+  operationName: string;
+}
+export const getMyCommunitiesRef: GetMyCommunitiesRef;
+
+export function getMyCommunities(vars: GetMyCommunitiesVariables, options?: ExecuteQueryOptions): QueryPromise<GetMyCommunitiesData, GetMyCommunitiesVariables>;
+export function getMyCommunities(dc: DataConnect, vars: GetMyCommunitiesVariables, options?: ExecuteQueryOptions): QueryPromise<GetMyCommunitiesData, GetMyCommunitiesVariables>;
+
+interface CreateCommunityRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateCommunityVariables): MutationRef<CreateCommunityData, CreateCommunityVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateCommunityVariables): MutationRef<CreateCommunityData, CreateCommunityVariables>;
+  operationName: string;
+}
+export const createCommunityRef: CreateCommunityRef;
+
+export function createCommunity(vars: CreateCommunityVariables): MutationPromise<CreateCommunityData, CreateCommunityVariables>;
+export function createCommunity(dc: DataConnect, vars: CreateCommunityVariables): MutationPromise<CreateCommunityData, CreateCommunityVariables>;
 

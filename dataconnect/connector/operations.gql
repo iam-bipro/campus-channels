@@ -76,3 +76,36 @@ mutation UpdateUserByEmail(
     }
   )
 }
+
+query GetMyCommunities($email: String!)
+  @auth(expr: "auth.token.email == email") {
+  communities(
+    where: { owner: { email: { eq: $email } } }
+    orderBy: { createdAt: DESC }
+  ) {
+    id
+    name
+    description
+    postingPolicy
+    memberCount
+    createdAt
+  }
+}
+
+mutation CreateCommunity(
+  $ownerId: UUID!
+  $email: String!
+  $name: String!
+  $description: String
+) @auth(expr: "auth.token.email == email") {
+  community_insert(
+    data: {
+      name: $name
+      description: $description
+      owner: { id: $ownerId }
+      postingPolicy: "members"
+      memberCount: 1
+      createdAt_expr: "request.time"
+    }
+  )
+}

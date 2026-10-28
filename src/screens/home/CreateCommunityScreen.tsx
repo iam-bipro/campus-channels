@@ -1,21 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { createCommunityInDataConnect } from '../../services/dataConnectService';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 
-type Props = { onBack?: () => void };
+type Props = { onBack?: () => void; onCreated?: (communityId: string, name: string) => void };
 
-export default function CreateCommunityScreen({ onBack }: Props) {
+export default function CreateCommunityScreen({ onBack, onCreated }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [created, setCreated] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const create = () => {
-    if (!name.trim()) return;
-    setInviteCode(`${name.replace(/\s+/g, '').slice(0, 5).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`);
-    setCreated(true);
+  const create = async () => {
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    setError('');
+    try {
+      const communityId = await createCommunityInDataConnect({ name, description });
+      setInviteCode(communityId.slice(0, 8).toUpperCase());
+      setCreated(true);
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : 'Unable to create the community.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -29,12 +41,13 @@ export default function CreateCommunityScreen({ onBack }: Props) {
         <Text style={styles.title}>{created ? 'Community created' : 'Start a community'}</Text>
         <Text style={styles.description}>{created ? 'Share this invite code with classmates so they can request to join.' : 'Bring your department, club, or study group together.'}</Text>
         {created ? (
-          <View style={styles.codeCard}><Text style={styles.codeLabel}>INVITE CODE</Text><Text selectable style={styles.code}>{inviteCode}</Text><Text style={styles.helper}>Your community is ready to share.</Text></View>
+          <View style={styles.codeCard}><Text style={styles.codeLabel}>COMMUNITY ID</Text><Text selectable style={styles.code}>{inviteCode}</Text><Text style={styles.helper}>Your community is saved and ready to share.</Text><Pressable accessibilityRole="button" onPress={() => onCreated?.(inviteCode, name)} style={styles.button}><Text style={styles.buttonText}>Open community admin</Text></Pressable></View>
         ) : (
           <>
             <TextInput onChangeText={setName} placeholder="Community name" placeholderTextColor="#9AAAC3" style={styles.input} value={name} />
             <TextInput multiline onChangeText={setDescription} placeholder="What is this community about?" placeholderTextColor="#9AAAC3" style={[styles.input, styles.multiline]} value={description} />
-            <Pressable accessibilityRole="button" disabled={!name.trim()} onPress={create} style={({ pressed }) => [styles.button, pressed && styles.pressed, !name.trim() && styles.disabled]}><Text style={styles.buttonText}>Create community</Text></Pressable>
+            {!!error && <Text style={styles.error}>{error}</Text>}
+            <Pressable accessibilityRole="button" disabled={!name.trim() || saving} onPress={create} style={({ pressed }) => [styles.button, pressed && styles.pressed, (!name.trim() || saving) && styles.disabled]}>{saving ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Create community</Text>}</Pressable>
           </>
         )}
       </View>
@@ -61,4 +74,5 @@ const styles = StyleSheet.create({
   codeLabel: { color: colors.body, fontSize: 12, fontWeight: '800', letterSpacing: 1.4 },
   code: { color: colors.primaryDark, fontSize: 30, fontWeight: '900', letterSpacing: 2, marginTop: spacing.sm },
   helper: { color: colors.body, fontSize: 14, marginTop: spacing.md },
+  error: { color: '#B42318', fontSize: 14, marginTop: spacing.md, textAlign: 'center' },
 });

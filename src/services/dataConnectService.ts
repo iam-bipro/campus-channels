@@ -3,7 +3,9 @@ import {
   createUser,
   connectorConfig,
   getUserByEmail,
+  getMyCommunities,
   hasApprovedCommunityByEmail as runHasApprovedCommunityByEmail,
+  createCommunity,
   updateUserByEmail,
 } from '../dataconnect-generated';
 import { getFirebaseAuth } from '../config/firebase';
@@ -20,6 +22,15 @@ export type UserProfile = {
   phone?: string | null;
   bio?: string | null;
   photoUrl?: string | null;
+};
+
+export type CommunitySummary = {
+  id: string;
+  name: string;
+  description?: string | null;
+  postingPolicy: string;
+  memberCount?: number | null;
+  createdAt: string;
 };
 
 export async function syncUserProfileFromDataConnect(input: {
@@ -65,4 +76,24 @@ export async function updateCurrentUserProfile(input: Omit<UserProfile, 'email' 
   const email = getFirebaseAuth().currentUser?.email?.trim();
   if (!email) throw new Error('A signed-in user email is required to update your profile.');
   await updateUserByEmail(dataConnect, { ...input, email });
+}
+
+export async function getMyCommunitiesFromDataConnect(): Promise<CommunitySummary[]> {
+  const email = getFirebaseAuth().currentUser?.email?.trim();
+  if (!email) throw new Error('A signed-in user email is required to load communities.');
+  const result = await getMyCommunities(dataConnect, { email });
+  return result.data.communities;
+}
+
+export async function createCommunityInDataConnect(input: { name: string; description?: string }): Promise<string> {
+  const profile = await getCurrentUserProfile();
+  const email = getFirebaseAuth().currentUser?.email?.trim();
+  if (!profile || !email) throw new Error('Complete your account profile before creating a community.');
+  const result = await createCommunity(dataConnect, {
+    ownerId: profile.id,
+    email,
+    name: input.name.trim(),
+    description: input.description?.trim() || undefined,
+  });
+  return result.data.community_insert.id;
 }

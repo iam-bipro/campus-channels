@@ -7,9 +7,11 @@ import JoinCommunityScreen from './src/screens/home/JoinCommunityScreen';
 import HomeScreen from './src/screens/home/HomeScreen';
 import AccountScreen from './src/screens/home/AccountScreen';
 import CreateCommunityScreen from './src/screens/home/CreateCommunityScreen';
+import CommunityAdminScreen from './src/screens/home/CommunityAdminScreen';
 
 export default function App() {
-  const [screen, setScreen] = useState<'login' | 'signup' | 'home' | 'no-channels' | 'join-community' | 'account' | 'create-community'>('login');
+  const [screen, setScreen] = useState<'login' | 'signup' | 'home' | 'no-channels' | 'join-community' | 'account' | 'create-community' | 'community-admin'>('login');
+  const [adminCommunity, setAdminCommunity] = useState({ id: '', name: '' });
 
   useEffect(() => {
     if (Platform.OS !== 'web' || document.getElementById('campus-channels-input-styles')) {
@@ -44,7 +46,7 @@ export default function App() {
   }, []);
 
   return screen === 'login' ? (
-    <LoginScreen onAuthenticated={(hasCommunity) => setScreen(hasCommunity ? 'home' : 'no-channels')} onJoinNow={() => setScreen('signup')} />
+    <LoginScreen onAuthenticated={() => setScreen('no-channels')} onJoinNow={() => setScreen('signup')} />
   ) : screen === 'signup' ? (
     <SignUpScreen onAuthenticated={() => setScreen('no-channels')} onLogin={() => setScreen('login')} />
   ) : screen === 'home' ? (
@@ -52,9 +54,11 @@ export default function App() {
   ) : screen === 'no-channels' ? (
     <NoChannelsScreen onAccount={() => setScreen('account')} onCreateCommunity={() => setScreen('create-community')} onJoinCommunity={() => setScreen('join-community')} onLogout={() => setScreen('login')} />
   ) : screen === 'account' ? (
-    <AccountScreen onBack={() => setScreen('home')} />
+    <AccountScreen onBack={() => setScreen('no-channels')} />
   ) : screen === 'create-community' ? (
-    <CreateCommunityScreen onBack={() => setScreen('home')} />
+    <CreateCommunityScreen onBack={() => setScreen('no-channels')} onCreated={(id, name) => { setAdminCommunity({ id, name }); setScreen('community-admin'); }} />
+  ) : screen === 'community-admin' ? (
+    <CommunityAdminScreen communityId={adminCommunity.id} communityName={adminCommunity.name} onBack={() => setScreen('no-channels')} />
   ) : (
     <JoinCommunityScreen onBack={() => setScreen('no-channels')} />
   );
