@@ -1,65 +1,62 @@
 import { getApps, initializeApp } from 'firebase-admin/app';
-import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { getPool, queryRows, withTransaction } from './db.js';
 
 if (getApps().length === 0) {
   initializeApp();
 }
-const firestore = getFirestore();
+
 const storage = getStorage();
 
-export const onPaperCreated = onDocumentCreated(
-  'communities/{communityId}/channels/{channelId}/papers/{paperId}',
-  async (event) => {
-    const paper = event.data?.data();
-    if (!paper) {
-      return;
-    }
+export const syncUserProfile = onCall(async (request) => {
+  const uid = requireAuth(request.auth?.uid);
+  const input = request.data as {
+    name?: string;
+    email?: string;
+    rollNo?: string;
+    department?: string;
+    year?: string;
+    phone?: string;
+    bio?: string;
+    photoUrl?: string;
+  };
 
-    const membersSnapshot = await firestore
-      .collection(`communities/${event.params.communityId}/members`)
-      .where('status', '==', 'approved')
-      .get();
-    const userRefs = membersSnapshot.docs
-      .filter((member) => {
-        const data = member.data();
-        return !data.mutedChannels?.includes(event.params.channelId) && !isQuietHours(data.quietHours);
-      })
-      .map((member) => member.id);
-    const users = await Promise.all(userRefs.map((uid) => firestore.doc(`users/${uid}`).get()));
-    const messages = users
-      .map((user) => ({ token: user.data()?.pushToken, uid: user.id }))
-      .filter((entry): entry is { token: string; uid: string } => typeof entry.token === 'string');
+  if (!input.email?.trim()) {
+    throw new HttpsError('invalid-argument', 'An email address is required.');
+  }
 
-    if (messages.length === 0) {
-      return;
-    }
+  await getPool().query(
+    `INSERT INTO users (uid, name, email, roll_no, department, year, phone, bio, photo_url)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     ON CONFLICT (uid) DO UPDATE SET
+       name = EXCLUDED.name,
+       email = EXCLUDED.email,
+       roll_no = COALESCE(EXCLUDED.roll_no, users.roll_no),
+       department = COALESCE(EXCLUDED.department, users.department),
+       year = COALESCE(EXCLUDED.year, users.year),
+       phone = COALESCE(EXCLUDED.phone, users.phone),
+       bio = COALESCE(EXCLUDED.bio, users.bio),
+       photo_url = COALESCE(EXCLUDED.photo_url, users.photo_url)`,
+    [uid, input.name?.trim() || 'Campus Channels member', input.email.trim(), input.rollNo?.trim() || null,
+      input.department?.trim() || null, input.year?.trim() || null, input.phone?.trim() || null,
+      input.bio?.trim() || null, input.photoUrl?.trim() || null],
+  );
+  return { ok: true };
+});
 
-    for (const batch of chunk(messages, 100)) {
-      const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(batch.map(({ token }) => ({
-          to: token,
-          title: paper.title,
-          body: `${paper.subject} · ${paper.semester}`,
-          data: {
-            communityId: event.params.communityId,
-            channelId: event.params.channelId,
-            paperId: event.params.paperId,
-          },
-        }))),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Expo push gateway returned ${response.status}.`);
-      }
-    }
-  },
-);
+export const hasApprovedCommunity = onCall(async (request) => {
+  const uid = requireAuth(request.auth?.uid);
+  const rows = await queryRows<{ exists: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM community_members
+       WHERE uid = $1 AND status = 'approved'
+     ) AS exists`,
+    [uid],
+  );
+  return { hasCommunity: rows[0]?.exists === true };
+});
 
 export const validateAndJoinCommunity = onCall(async (request) => {
   const uid = requireAuth(request.auth?.uid);
@@ -68,29 +65,32 @@ export const validateAndJoinCommunity = onCall(async (request) => {
     throw new HttpsError('invalid-argument', 'inviteCode and communityId are required.');
   }
 
-  const inviteRef = firestore.doc(`communities/${communityId}/invites/${inviteCode.trim().toUpperCase()}`);
-  const memberRef = firestore.doc(`communities/${communityId}/members/${uid}`);
-
-  await firestore.runTransaction(async (transaction) => {
-    const inviteSnapshot = await transaction.get(inviteRef);
-    if (!inviteSnapshot.exists) {
+  await withTransaction(async (client) => {
+    const inviteResult = await client.query(
+      `SELECT community_id, code, expires_at, max_uses, used_count, active
+       FROM invites
+       WHERE community_id = $1 AND code = $2
+       FOR UPDATE`,
+      [communityId, inviteCode.trim().toUpperCase()],
+    );
+    const invite = inviteResult.rows[0];
+    if (!invite) {
       throw new HttpsError('not-found', 'Invite code not found.');
     }
-
-    const invite = inviteSnapshot.data()!;
-    const expiresAt = invite.expiresAt as Timestamp | undefined;
-    if (!invite.active || !expiresAt || expiresAt.toMillis() <= Date.now() || invite.usedCount >= invite.maxUses) {
+    if (!invite.active || invite.expires_at <= new Date() || invite.used_count >= invite.max_uses) {
       throw new HttpsError('failed-precondition', 'Invite code is expired, inactive, or fully used.');
     }
 
-    transaction.set(memberRef, {
-      uid,
-      role: 'member',
-      status: 'pending',
-      joinedAt: FieldValue.serverTimestamp(),
-      invitedWith: inviteCode.trim().toUpperCase(),
-    }, { merge: true });
-    transaction.update(inviteRef, { usedCount: FieldValue.increment(1) });
+    await client.query(
+      `INSERT INTO community_members (community_id, uid, role, status, invited_with)
+       VALUES ($1, $2, 'member', 'pending', $3)
+       ON CONFLICT (community_id, uid) DO UPDATE SET invited_with = EXCLUDED.invited_with`,
+      [communityId, uid, invite.code],
+    );
+    await client.query(
+      `UPDATE invites SET used_count = used_count + 1 WHERE community_id = $1 AND code = $2`,
+      [communityId, invite.code],
+    );
   });
 
   return { status: 'pending' };
@@ -107,27 +107,32 @@ export const processJoinApproval = onCall(async (request) => {
     throw new HttpsError('invalid-argument', 'communityId, targetUid, and a valid action are required.');
   }
 
-  const actorRef = firestore.doc(`communities/${communityId}/members/${uid}`);
-  const targetRef = firestore.doc(`communities/${communityId}/members/${targetUid}`);
-  const communityRef = firestore.doc(`communities/${communityId}`);
-  const targetUserRef = firestore.doc(`users/${targetUid}`);
-
-  await firestore.runTransaction(async (transaction) => {
-    const actorSnapshot = await transaction.get(actorRef);
-    const targetSnapshot = await transaction.get(targetRef);
-    if (!actorSnapshot.exists || !['owner', 'admin'].includes(actorSnapshot.data()?.role)) {
+  await withTransaction(async (client) => {
+    const actorResult = await client.query(
+      `SELECT role FROM community_members
+       WHERE community_id = $1 AND uid = $2 AND status = 'approved'`,
+      [communityId, uid],
+    );
+    if (!['owner', 'admin'].includes(actorResult.rows[0]?.role)) {
       throw new HttpsError('permission-denied', 'Only owners and admins can process join requests.');
     }
-    if (!targetSnapshot.exists || targetSnapshot.data()?.status !== 'pending') {
+
+    const targetResult = await client.query(
+      `UPDATE community_members
+       SET status = $1, joined_at = CASE WHEN $1 = 'approved' THEN NOW() ELSE joined_at END
+       WHERE community_id = $2 AND uid = $3 AND status = 'pending'
+       RETURNING uid`,
+      [action === 'approve' ? 'approved' : 'removed', communityId, targetUid],
+    );
+    if (targetResult.rowCount !== 1) {
       throw new HttpsError('failed-precondition', 'This join request is no longer pending.');
     }
 
     if (action === 'approve') {
-      transaction.update(targetRef, { status: 'approved', joinedAt: FieldValue.serverTimestamp() });
-      transaction.set(communityRef, { memberCount: FieldValue.increment(1) }, { merge: true });
-      transaction.set(targetUserRef, { communityIds: FieldValue.arrayUnion(communityId) }, { merge: true });
-    } else {
-      transaction.update(targetRef, { status: 'removed' });
+      await client.query(
+        `UPDATE communities SET member_count = member_count + 1 WHERE id = $1`,
+        [communityId],
+      );
     }
   });
 
@@ -137,25 +142,15 @@ export const processJoinApproval = onCall(async (request) => {
 export const cleanOrphanedStorage = onSchedule('0 3 * * *', async () => {
   const bucket = storage.bucket();
   const [files] = await bucket.getFiles({ prefix: 'communities/' });
-  const checks = files
-    .filter((file) => file.name.endsWith('.pdf') || file.metadata.contentType?.startsWith('image/'))
-    .map(async (file) => {
-      const path = file.name.split('/');
-      if (path.length < 3 || path[0] !== 'communities') {
-        return;
-      }
-
-      const paperSnapshot = await firestore
-        .collectionGroup('papers')
-        .where('storagePath', '==', file.name)
-        .limit(1)
-        .get();
-      if (paperSnapshot.empty) {
-        await file.delete();
-      }
-    });
-
-  await Promise.all(checks);
+  await Promise.all(files.map(async (file) => {
+    if (!file.name.endsWith('.pdf') && !file.metadata.contentType?.startsWith('image/')) {
+      return;
+    }
+    const result = await getPool().query('SELECT 1 FROM papers WHERE storage_path = $1 LIMIT 1', [file.name]);
+    if (result.rowCount === 0) {
+      await file.delete();
+    }
+  }));
 });
 
 function requireAuth(uid: string | undefined): string {
@@ -163,22 +158,4 @@ function requireAuth(uid: string | undefined): string {
     throw new HttpsError('unauthenticated', 'You must be signed in.');
   }
   return uid;
-}
-
-function isQuietHours(quietHours: { enabled?: boolean; start?: number; end?: number } | undefined): boolean {
-  if (!quietHours?.enabled || typeof quietHours.start !== 'number' || typeof quietHours.end !== 'number') {
-    return false;
-  }
-  const hour = new Date().getUTCHours();
-  return quietHours.start <= quietHours.end
-    ? hour >= quietHours.start && hour < quietHours.end
-    : hour >= quietHours.start || hour < quietHours.end;
-}
-
-function chunk<T>(items: T[], size: number): T[][] {
-  const batches: T[][] = [];
-  for (let index = 0; index < items.length; index += size) {
-    batches.push(items.slice(index, index + size));
-  }
-  return batches;
 }

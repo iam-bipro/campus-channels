@@ -6,9 +6,8 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { getFirebaseAuth } from '../config/firebase';
-import { db } from '../config/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { getFirebaseAuth, functions } from '../config/firebase';
 
 export async function loginWithEmail(email: string, password: string): Promise<void> {
   await signInWithEmailAndPassword(getFirebaseAuth(), email.trim(), password);
@@ -27,17 +26,7 @@ export async function registerWithEmail(input: {
   validateCollegeEmail(input.email);
   const credential = await createUserWithEmailAndPassword(getFirebaseAuth(), input.email.trim(), input.password);
   await updateProfile(credential.user, { displayName: input.name.trim() });
-  await setDoc(doc(db, 'users', credential.user.uid), {
-    name: input.name.trim(),
-    email: input.email.trim(),
-    rollNo: input.rollNo.trim(),
-    department: input.department.trim(),
-    year: input.year.trim(),
-    phone: input.phone?.trim() || null,
-    bio: input.bio?.trim() || null,
-    communityIds: [],
-    createdAt: new Date(),
-  });
+  await syncUserProfile(input);
 }
 
 export async function loginWithGoogle(): Promise<void> {
@@ -46,17 +35,31 @@ export async function loginWithGoogle(): Promise<void> {
   }
 
   const credential = await signInWithPopup(getFirebaseAuth(), new GoogleAuthProvider());
-  await setDoc(doc(db, 'users', credential.user.uid), {
+  await syncUserProfile({
     name: credential.user.displayName || 'Campus Channels member',
     email: credential.user.email || '',
-    photoUrl: credential.user.photoURL || null,
-  }, { merge: true });
+    photoUrl: credential.user.photoURL || undefined,
+  });
 }
 
-export async function hasApprovedCommunity(uid: string): Promise<boolean> {
-  const snapshot = await getDoc(doc(db, 'users', uid));
-  const communityIds = snapshot.data()?.communityIds;
-  return Array.isArray(communityIds) && communityIds.length > 0;
+export async function syncUserProfile(input: {
+  name: string;
+  email: string;
+  rollNo?: string;
+  department?: string;
+  year?: string;
+  phone?: string;
+  bio?: string;
+  photoUrl?: string;
+}): Promise<void> {
+  const syncProfile = httpsCallable(functions, 'syncUserProfile');
+  await syncProfile(input);
+}
+
+export async function hasApprovedCommunity(): Promise<boolean> {
+  const checkMembership = httpsCallable<unknown, { hasCommunity: boolean }>(functions, 'hasApprovedCommunity');
+  const result = await checkMembership({});
+  return result.data.hasCommunity;
 }
 
 export async function logout(): Promise<void> {

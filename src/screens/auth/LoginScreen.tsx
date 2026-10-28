@@ -13,7 +13,6 @@ import {
   View,
 } from 'react-native';
 import { hasApprovedCommunity, loginWithEmail, loginWithGoogle } from '../../services/authService';
-import { getFirebaseAuth } from '../../config/firebase';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -38,7 +37,7 @@ export default function LoginScreen({ onAuthenticated, onJoinNow }: LoginScreenP
     try {
       setIsSubmitting(true);
       await loginWithEmail(email, password);
-      onAuthenticated?.(await hasApprovedCommunity(getFirebaseUserId()));
+      onAuthenticated?.(await hasApprovedCommunity());
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to log in right now.';
       Alert.alert('Login failed', message);
@@ -156,7 +155,7 @@ export default function LoginScreen({ onAuthenticated, onJoinNow }: LoginScreenP
               onPress={async () => {
                 try {
                   await loginWithGoogle();
-                  onAuthenticated?.(await hasApprovedCommunity(getFirebaseUserId()));
+                  onAuthenticated?.(await hasApprovedCommunity());
                 } catch (error) {
                   const message = error instanceof Error ? error.message : 'Unable to continue with Google.';
                   Alert.alert('Google sign-in failed', message);
@@ -199,13 +198,6 @@ export default function LoginScreen({ onAuthenticated, onJoinNow }: LoginScreenP
   );
 }
 
-function getFirebaseUserId(): string {
-  const user = getFirebaseAuth().currentUser;
-  if (!user) {
-    throw new Error('Authentication completed without an active user session.');
-  }
-  return user.uid;
-}
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
