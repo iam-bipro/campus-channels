@@ -1,0 +1,5 @@
+connectorId: "campus-channels"
+generate:
+  javascriptSdk:
+    outputDir: "../../src/dataconnect-generated"
+    package: "@firebasegen/campus-channels-connector"

@@ -1,0 +1,13 @@
+specVersion: "v1"
+serviceId: "chatup-23449-service"
+location: "us-east4"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "chatup-23449-database"
+      cloudSql:
+        instanceId: "chatup-23449-instance"
+connectorDirs:
+  - "./connector"
+connectorId: "campus-channels"

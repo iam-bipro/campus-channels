@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -12,8 +13,7 @@ import {
   View,
 } from 'react-native';
 import { colors } from '../../theme/colors';
-import { loginWithGoogle } from '../../services/authService';
-import { registerWithEmail } from '../../services/authService';
+import { loginWithGoogle, registerWithEmail, resendVerificationEmail } from '../../services/authService';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
@@ -36,6 +36,9 @@ export default function SignUpScreen({ onAuthenticated, onLogin }: SignUpScreenP
   const [step, setStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [verificationSent, setVerificationSent] = useState(false);
 
   const handleContinue = () => {
     if (step === steps.length - 1) {
@@ -48,13 +51,21 @@ export default function SignUpScreen({ onAuthenticated, onLogin }: SignUpScreenP
   const handleBack = () => setStep((current) => Math.max(current - 1, 0));
 
   const handleCreateAccount = async () => {
+    setSubmitMessage('');
+    setSubmitError('');
     try {
       setIsSubmitting(true);
       await registerWithEmail({ name: fullName, email, password, rollNo, department, year, phone, bio });
-      onAuthenticated?.();
+      setVerificationSent(true);
+      setSubmitMessage(`Verification email sent to ${email.trim()}. Open the link in that email, then use Log In.`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to create your account.';
-      Alert.alert('Sign-up failed', message);
+      const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
+      const message = code === 'auth/email-already-in-use'
+        ? 'This email is already registered. Please log in instead.'
+        : code === 'auth/configuration-not-found'
+          ? 'Firebase Authentication is not enabled yet. In Firebase Console, open Authentication, click Get started, enable Email/Password, and try again.'
+          : error instanceof Error ? error.message : 'Unable to create your account.';
+      setSubmitError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -178,10 +189,34 @@ export default function SignUpScreen({ onAuthenticated, onLogin }: SignUpScreenP
                 </Pressable>
               ) : <View />}
               <Pressable accessibilityRole="button" disabled={isSubmitting} onPress={step === steps.length - 1 ? handleCreateAccount : handleContinue} style={({ pressed }) => [styles.primaryButton, styles.continueButton, pressed && styles.pressed]}>
-                <Text style={styles.primaryButtonText}>{step === steps.length - 1 ? 'Create Account' : 'Continue'}</Text>
-                <Ionicons color={colors.white} name={step === steps.length - 1 ? 'checkmark' : 'arrow-forward'} size={25} />
+                {isSubmitting ? <ActivityIndicator color={colors.white} /> : <Text style={styles.primaryButtonText}>{step === steps.length - 1 ? 'Create Account' : 'Continue'}</Text>}
+                {!isSubmitting && <Ionicons color={colors.white} name={step === steps.length - 1 ? 'checkmark' : 'arrow-forward'} size={25} />}
               </Pressable>
             </View>
+
+            {!!submitMessage && <View style={styles.successBanner}><Ionicons color="#188A54" name="mail-open-outline" size={20} /><Text style={styles.successBannerText}>{submitMessage}</Text></View>}
+            {!!submitError && <View style={styles.errorBanner}><Ionicons color="#B42318" name="alert-circle-outline" size={20} /><Text style={styles.errorBannerText}>{submitError}</Text></View>}
+            {verificationSent && (
+              <Pressable
+                accessibilityRole="button"
+                disabled={isSubmitting}
+                onPress={async () => {
+                  try {
+                    setIsSubmitting(true);
+                    await resendVerificationEmail();
+                    setSubmitError('');
+                    setSubmitMessage(`A new verification email was requested for ${email.trim()}. Check Inbox, Spam, and Promotions.`);
+                  } catch (error) {
+                    setSubmitError(error instanceof Error ? error.message : 'Unable to resend the verification email.');
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+                style={styles.resendButton}
+              >
+                <Text style={styles.resendButtonText}>Resend verification email</Text>
+              </Pressable>
+            )}
 
             {step === 0 && (
               <>
@@ -356,4 +391,10 @@ const styles = StyleSheet.create({
   featureTitle: { color: colors.ink, fontSize: 11, fontWeight: '700', textAlign: 'center' },
   featureText: { color: colors.body, fontSize: 10, lineHeight: 14, marginTop: 4, textAlign: 'center' },
   footer: { color: '#7991B6', fontSize: 14, marginTop: spacing.lg, textAlign: 'center' },
+  successBanner: { alignItems: 'center', backgroundColor: '#E8F8EF', borderColor: '#A7E0BE', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 10, marginTop: spacing.md, padding: spacing.md },
+  successBannerText: { color: '#166534', flex: 1, fontSize: 14, lineHeight: 20 },
+  errorBanner: { alignItems: 'center', backgroundColor: '#FFF1F0', borderColor: '#F3B4AF', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 10, marginTop: spacing.md, padding: spacing.md },
+  errorBannerText: { color: '#9B1C1C', flex: 1, fontSize: 14, lineHeight: 20 },
+  resendButton: { alignSelf: 'center', marginTop: spacing.sm, padding: spacing.sm },
+  resendButtonText: { color: colors.primary, fontSize: 14, fontWeight: '700' },
 });

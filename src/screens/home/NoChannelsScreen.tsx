@@ -11,19 +11,30 @@ import {
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import SideDrawer from '../../components/SideDrawer';
+import { getFirebaseAuth } from '../../config/firebase';
 
 type NoChannelsScreenProps = {
   onJoinCommunity?: () => void;
+  onLogout?: () => void;
+  onAccount?: () => void;
+  onCreateCommunity?: () => void;
 };
 
 const filters = ['All', 'Departments', 'Subjects', 'Bookmarks'];
 
-export default function NoChannelsScreen({ onJoinCommunity }: NoChannelsScreenProps) {
+export default function NoChannelsScreen({ onJoinCommunity, onLogout, onAccount, onCreateCommunity }: NoChannelsScreenProps) {
+  const [drawerVisible, setDrawerVisible] = React.useState(false);
+  const [profileName, setProfileName] = React.useState('Your account');
+  React.useEffect(() => {
+    setProfileName(getFirebaseAuth().currentUser?.displayName || 'Your account');
+  }, []);
   return (
     <SafeAreaView style={styles.screen}>
+      <SideDrawer onAccount={onAccount} onClose={() => setDrawerVisible(false)} onCreateCommunity={onCreateCommunity} onJoinCommunity={onJoinCommunity} onLogout={onLogout} profileName={profileName} visible={drawerVisible} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Pressable accessibilityLabel="Open menu" accessibilityRole="button" hitSlop={10} onPress={() => undefined} style={styles.iconButton}>
+          <Pressable accessibilityLabel="Open menu" accessibilityRole="button" hitSlop={10} onPress={() => setDrawerVisible(true)} style={styles.iconButton}>
             <Ionicons color={colors.ink} name="menu-outline" size={29} />
           </Pressable>
           <Text style={styles.brandName}>Campus <Text style={styles.brandAccent}>Channels</Text></Text>

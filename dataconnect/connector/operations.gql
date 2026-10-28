@@ -1,0 +1,78 @@
+query GetUserByEmail($email: String!)
+  @auth(expr: "auth.token.email == email") {
+  users(where: { email: { eq: $email } }, limit: 1) {
+    id
+    name
+    email
+    rollNo
+    department
+    year
+    phone
+    bio
+    photoUrl
+    communityIds
+  }
+}
+
+query HasApprovedCommunityByEmail($email: String!)
+  @auth(expr: "auth.token.email == email") {
+  memberships(
+    where: {
+      user: { email: { eq: $email } }
+      status: { eq: "approved" }
+    }
+    limit: 1
+  ) {
+    id
+  }
+}
+
+mutation CreateUser(
+  $name: String!
+  $email: String!
+  $rollNo: String!
+  $department: String!
+  $year: Int!
+  $phone: String
+  $bio: String
+  $photoUrl: String
+) @auth(expr: "auth.token.email == email") {
+  user_insert(
+    data: {
+      name: $name
+      email: $email
+      rollNo: $rollNo
+      department: $department
+      year: $year
+      phone: $phone
+      bio: $bio
+      photoUrl: $photoUrl
+      createdAt_expr: "request.time"
+    }
+  )
+}
+
+mutation UpdateUserByEmail(
+  $id: UUID!
+  $email: String!
+  $name: String!
+  $rollNo: String!
+  $department: String!
+  $year: Int!
+  $phone: String
+  $bio: String
+  $photoUrl: String
+) @auth(expr: "auth.token.email == email") {
+  user_update(
+    key: { id: $id }
+    data: {
+      name: $name
+      rollNo: $rollNo
+      department: $department
+      year: $year
+      phone: $phone
+      bio: $bio
+      photoUrl: $photoUrl
+    }
+  )
+}

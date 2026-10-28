@@ -39,7 +39,10 @@ export default function LoginScreen({ onAuthenticated, onJoinNow }: LoginScreenP
       await loginWithEmail(email, password);
       onAuthenticated?.(await hasApprovedCommunity());
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to log in right now.';
+      const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
+      const message = code === 'auth/configuration-not-found'
+        ? 'Firebase Authentication is not enabled yet. In Firebase Console, open Authentication, click Get started, enable Email/Password, and try again.'
+        : error instanceof Error ? error.message : 'Unable to log in right now.';
       Alert.alert('Login failed', message);
     } finally {
       setIsSubmitting(false);

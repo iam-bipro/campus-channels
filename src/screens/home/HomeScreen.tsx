@@ -2,18 +2,32 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { logout } from '../../services/authService';
+import { getFirebaseAuth } from '../../config/firebase';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import SideDrawer from '../../components/SideDrawer';
 
 type HomeScreenProps = {
   onLogout?: () => void;
+  onAccount?: () => void;
+  onCreateCommunity?: () => void;
+  onJoinCommunity?: () => void;
 };
 
-export default function HomeScreen({ onLogout }: HomeScreenProps) {
+export default function HomeScreen({ onLogout, onAccount, onCreateCommunity, onJoinCommunity }: HomeScreenProps) {
+  const [drawerVisible, setDrawerVisible] = React.useState(false);
+  const [profileName, setProfileName] = React.useState('Your account');
+  React.useEffect(() => {
+    setProfileName(getFirebaseAuth().currentUser?.displayName || 'Your account');
+  }, []);
   return (
     <SafeAreaView style={styles.screen}>
+      <SideDrawer onAccount={onAccount} onClose={() => setDrawerVisible(false)} onCreateCommunity={onCreateCommunity} onJoinCommunity={onJoinCommunity} onLogout={onLogout} profileName={profileName} visible={drawerVisible} />
       <View style={styles.header}>
+        <Pressable accessibilityLabel="Open menu" accessibilityRole="button" onPress={() => setDrawerVisible(true)} style={styles.menuButton}>
+          <Ionicons color={colors.ink} name="menu-outline" size={27} />
+        </Pressable>
         <Text style={styles.brand}>Campus <Text style={styles.accent}>Channels</Text></Text>
         <Pressable
           accessibilityLabel="Log out"
@@ -41,6 +55,7 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', backgroundColor: colors.white, borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between', minHeight: 68, paddingHorizontal: spacing.md },
   brand: { ...typography.title, fontSize: 22 },
   accent: { color: '#4172EA' },
+  menuButton: { alignItems: 'center', minHeight: 44, minWidth: 44, justifyContent: 'center' },
   logoutButton: { alignItems: 'center', minHeight: 44, minWidth: 44, justifyContent: 'center' },
   content: { alignItems: 'center', padding: spacing.xl },
   iconCircle: { alignItems: 'center', backgroundColor: colors.muted, borderRadius: 36, height: 72, justifyContent: 'center', width: 72 },

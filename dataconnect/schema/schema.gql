@@ -1,0 +1,71 @@
+type User @table {
+  name: String!
+  email: String!
+  rollNo: String!
+  department: String!
+  year: Int!
+  phone: String
+  bio: String
+  photoUrl: String
+  pushToken: String
+  communityIds: [String]
+  createdAt: Timestamp!
+}
+
+type Community @table {
+  name: String!
+  description: String
+  owner: User!
+  postingPolicy: String!
+  memberCount: Int
+  createdAt: Timestamp!
+}
+
+type Membership @table {
+  user: User!
+  community: Community!
+  role: String!
+  status: String!
+  joinedAt: Timestamp!
+  invitedWith: String
+  mutedChannels: [String]
+  quietHoursEnabled: Boolean
+  quietHoursStart: Timestamp
+  quietHoursEnd: Timestamp
+}
+
+type Invite @table {
+  community: Community!
+  createdBy: User!
+  expiresAt: Timestamp!
+  maxUses: Int
+  usedCount: Int
+  active: Boolean!
+}
+
+type Channel @table {
+  community: Community!
+  name: String!
+  category: String
+  department: String
+  archived: Boolean
+  createdAt: Timestamp!
+}
+
+type Paper @table {
+  channel: Channel!
+  title: String!
+  subject: String
+  department: String
+  semester: Int
+  examType: String
+  fileUrl: String!
+  storagePath: String
+  fileType: String
+  uploadedBy: User!
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+  seenBy: [String]
+  seenCount: Int
+  reactions: String
+}
